@@ -1,0 +1,27 @@
+[project]
+name = "ledbadgeprogrammer"
+version = "0.2.0"
+description = "Program B1248W and compatible scrolling LED name badges"
+readme = "README.md"
+authors = [
+    { name = "Olli Sulopuisto", email = "1051255+ollisulopuisto@users.noreply.github.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pillow>=10.0.0",
+    "pyserial>=3.5",
+]
+
+[project.scripts]
+ledbadge = "ledbadgeprogrammer.cli:main"
+ledbadgeprogrammer = "ledbadgeprogrammer.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.2",
+]

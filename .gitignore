@@ -1,0 +1,31 @@
+.idea
+
+# Temporary and backup files
+*~
+*.bak
+*.backup
+*.swp
+
+# Secrets and credentials
+.env
+.env*
+*.env
+*secret*
+*credential*
+*token*
+*.pem
+*.key
+*.id_rsa
+*.p12
+
+# System and dependencies
+.DS_Store
+.DS_Store?
+._*
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
