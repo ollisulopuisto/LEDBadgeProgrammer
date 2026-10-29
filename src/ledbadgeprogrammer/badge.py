@@ -375,26 +375,30 @@ class LEDBadge:
         ser_mod = serial_module or serial
         ser = ser_mod.Serial(target_port, 4800)
 
-        ser.write(b"Hello")
-        time.sleep(0.050)
+        # A disconnect or interrupted send must not retain the serial handle.
+        # Do not retry: an interrupted transfer may already have reached the badge.
+        try:
+            ser.write(b"Hello")
+            time.sleep(0.050)
 
-        ser.write(confheader + imgheader)
-        time.sleep(0.500)
+            ser.write(confheader + imgheader)
+            time.sleep(0.500)
 
-        sent = 0
-        for row in image:
-            if sent + len(row) < 256:
-                ser.write(row)
-                ser.flush()
-                sent += len(row)
-            else:
-                split = 256 - sent
-                ser.write(row[:split])
-                ser.flush()
-                time.sleep(0.500)
-                ser.write(row[split:])
-                ser.flush()
-                sent = len(row) - split
-            time.sleep(0.090)
+            sent = 0
+            for row in image:
+                if sent + len(row) < 256:
+                    ser.write(row)
+                    ser.flush()
+                    sent += len(row)
+                else:
+                    split = 256 - sent
+                    ser.write(row[:split])
+                    ser.flush()
+                    time.sleep(0.500)
+                    ser.write(row[split:])
+                    ser.flush()
+                    sent = len(row) - split
+                time.sleep(0.090)
 
-        ser.close()
+        finally:
+            ser.close()

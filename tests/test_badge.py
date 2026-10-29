@@ -1,6 +1,6 @@
 """Tests for LEDBadge protocol framing and serial sending."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -100,3 +100,23 @@ def test_badge_send_mock_serial():
     confheader, imgheader, _ = badge.build_payload()
     assert written_data[1] == confheader + imgheader
     mock_instance.close.assert_called_once()
+
+
+@pytest.mark.parametrize("failure", ["handshake", "payload", "flush", "interrupt"])
+def test_failed_send_closes_serial_port(failure):
+    badge = LEDBadge()
+    msg = Message(badge.config)
+    msg.set_image("test_12x48.png")
+    badge.add_message(msg)
+    serial = MagicMock()
+    port = serial.Serial.return_value
+    error = KeyboardInterrupt if failure == "interrupt" else OSError
+    if failure == "flush":
+        port.flush.side_effect = error("disconnect")
+    elif failure == "payload":
+        port.write.side_effect = [5, error("disconnect")]
+    else:
+        port.write.side_effect = error("disconnect")
+    with pytest.raises(error), patch("time.sleep"):
+        badge.send(serial_module=serial)
+    port.close.assert_called_once()

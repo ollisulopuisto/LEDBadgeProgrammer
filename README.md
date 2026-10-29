@@ -171,3 +171,12 @@ The views and conclusions contained in the software and documentation are those
 of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 
+
+## Audit follow-through (2026-10-29)
+
+Serial send now closes its handle on handshake/payload/flush failures and on
+KeyboardInterrupt, without retrying an uncertain hardware transfer. Four mocked
+failure regressions were red (close never called), then green; full21tests and
+ruff lint/format checks pass. No USB device was accessed. This establishes
+resource cleanup only, not successful badge programming, visual alignment or
+native driver compatibility. Human merge pending.
