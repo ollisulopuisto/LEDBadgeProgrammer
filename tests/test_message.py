@@ -2,7 +2,13 @@
 
 from PIL import Image
 
-from ledbadgeprogrammer.badge import EFFECTS, BadgeConfig, Message, resolve_font_path
+from ledbadgeprogrammer.badge import (
+    EFFECTS,
+    BadgeConfig,
+    Message,
+    load_font,
+    resolve_font_path,
+)
 
 
 def test_message_defaults():
@@ -84,3 +90,10 @@ def test_resolve_font_path():
     p = resolve_font_path("helvR08.pil")
     assert p.is_file()
     assert p.name == "helvR08.pil"
+
+
+def test_load_font_caching():
+    p = resolve_font_path("helvR08.pil")
+    font1 = load_font(p)
+    font2 = load_font(p)
+    assert font1 is font2
