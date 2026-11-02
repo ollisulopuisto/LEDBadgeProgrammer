@@ -86,6 +86,30 @@ def test_message_crop_blank_image():
     assert cropped.size[1] == 12
 
 
+def test_message_set_image_non_byte_aligned_and_padding():
+    # Width 44 is not a multiple of 8 (5 bytes + 4 bits); Height 11 < badge height 12
+    config = BadgeConfig(width=44, height=12)
+    msg_normal = Message(config)
+    msg_normal.set_image("test_11x44.png", invert=False)
+    assert msg_normal.width_bytes == 6  # ceil(44 / 8) = 6
+    assert len(msg_normal.image_rows) == 12
+    for row in msg_normal.image_rows:
+        assert len(row) == 6
+
+    msg_inverted = Message(config)
+    msg_inverted.set_image("test_11x44.png", invert=True)
+    assert msg_inverted.width_bytes == 6
+    assert len(msg_inverted.image_rows) == 12
+
+    # Verify that the active 44 bits are inverted and the unused 4 bits in byte 6 are 0
+    rem_mask = 0xF0  # 4 bits active in the 6th byte
+    for r_norm, r_inv in zip(msg_normal.image_rows[:11], msg_inverted.image_rows[:11]):
+        for b_norm, b_inv in zip(r_norm[:5], r_inv[:5]):
+            assert b_norm ^ b_inv == 0xFF
+        assert (r_norm[5] ^ r_inv[5]) == rem_mask
+        assert (r_inv[5] & ~rem_mask) == 0
+
+
 def test_resolve_font_path():
     p = resolve_font_path("helvR08.pil")
     assert p.is_file()
