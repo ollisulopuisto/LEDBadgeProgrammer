@@ -121,3 +121,18 @@ def test_load_font_caching():
     font1 = load_font(p)
     font2 = load_font(p)
     assert font1 is font2
+
+
+def test_resolve_font_path_caching():
+    resolve_font_path.cache_clear()
+    p1 = resolve_font_path("helvR08.pil")
+    p2 = resolve_font_path("helvR08.pil")
+    assert p1 == p2
+    info = resolve_font_path.cache_info()
+    assert info.hits == 1
+
+    p_default1 = resolve_font_path()
+    p_default2 = resolve_font_path()
+    assert p_default1 == p_default2
+    info2 = resolve_font_path.cache_info()
+    assert info2.hits == 2
