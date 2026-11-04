@@ -123,6 +123,32 @@ def test_load_font_caching():
     assert font1 is font2
 
 
+def test_message_invert_various_widths():
+    # Test various width alignments: byte-aligned (8, 48) and unaligned (7, 44, 45)
+    for width in [7, 8, 44, 45, 48]:
+        config = BadgeConfig(width=width, height=12)
+        im = Image.new("1", (width, 12), 0)
+        for x in range(width):
+            im.putpixel((x, x % 12), 1)
+
+        msg_norm = Message(config)
+        msg_norm.set_image(im, invert=False)
+
+        msg_inv = Message(config)
+        msg_inv.set_image(im, invert=True)
+
+        assert msg_norm.width_bytes == msg_inv.width_bytes
+        rem = width % 8
+        last_mask = ((0xFF << (8 - rem)) & 0xFF) if rem != 0 else 0xFF
+
+        for r_norm, r_inv in zip(msg_norm.image_rows, msg_inv.image_rows):
+            if len(r_norm) > 1:
+                for b_norm, b_inv in zip(r_norm[:-1], r_inv[:-1]):
+                    assert b_norm ^ b_inv == 0xFF
+            assert (r_norm[-1] ^ r_inv[-1]) == last_mask
+            assert (r_inv[-1] & ~last_mask) == 0
+
+
 def test_resolve_font_path_caching():
     resolve_font_path.cache_clear()
     p1 = resolve_font_path("helvR08.pil")
