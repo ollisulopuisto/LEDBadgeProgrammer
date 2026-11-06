@@ -6,6 +6,7 @@ from ledbadgeprogrammer.badge import (
     EFFECTS,
     BadgeConfig,
     Message,
+    get_text_size,
     load_font,
     resolve_font_path,
 )
@@ -162,3 +163,25 @@ def test_resolve_font_path_caching():
     assert p_default1 == p_default2
     info2 = resolve_font_path.cache_info()
     assert info2.hits == 2
+
+
+def test_get_text_size_caching():
+    get_text_size.cache_clear()
+    p = resolve_font_path("helvR08.pil")
+    font = load_font(p)
+
+    # Empty string handling
+    assert get_text_size(font, "") == (0, 0)
+
+    # First call - cache miss
+    size1 = get_text_size(font, "Hello World")
+    assert size1[0] > 0
+    assert size1[1] > 0
+    info1 = get_text_size.cache_info()
+    assert info1.misses >= 1
+
+    # Second call with identical arguments - cache hit
+    size2 = get_text_size(font, "Hello World")
+    assert size1 == size2
+    info2 = get_text_size.cache_info()
+    assert info2.hits >= 1
