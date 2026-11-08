@@ -57,6 +57,20 @@ def test_main_cli_dry_run(capsys):
     assert "Messages: 2" in captured.out
 
 
+def test_build_badge_dry_run_skips_serial_port_discovery():
+    with patch("ledbadgeprogrammer.cli.list_serial_ports") as mock_list_ports:
+        badge = build_badge_from_args(["--dry-run", "test_12x48.png"])
+        mock_list_ports.assert_not_called()
+        assert badge.config.port in ("/dev/ttyUSB0", "COM1")
+
+    with patch("ledbadgeprogrammer.cli.list_serial_ports") as mock_list_ports:
+        badge = build_badge_from_args(
+            ["-p", "/dev/custom_port", "--dry-run", "test_12x48.png"]
+        )
+        mock_list_ports.assert_not_called()
+        assert badge.config.port == "/dev/custom_port"
+
+
 def test_main_cli_list_ports(capsys):
     with patch(
         "ledbadgeprogrammer.cli.list_serial_ports",
