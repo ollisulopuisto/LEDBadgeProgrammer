@@ -225,8 +225,9 @@ class Message:
         ih = min(self.config.height, h)
         stride = (w + 7) // 8
 
-        # Convert to 1-bit monochrome directly in C (threshold at luminance >= 128)
-        bwim = im.convert("1", dither=Image.Dither.NONE)
+        # Convert to 1-bit monochrome directly in C (threshold at luminance >= 128);
+        # skip the conversion entirely when the input is already 1-bit.
+        bwim = im if im.mode == "1" else im.convert("1", dither=Image.Dither.NONE)
         raw = bwim.tobytes()
 
         # Terminal byte mask for widths not aligned to 8-bit boundaries
@@ -240,16 +241,12 @@ class Message:
             # rather than allocating bytearrays and looping byte-by-byte in Python.
             # This yields a ~45% speedup for image and text inversion.
             inverted_raw = raw.translate(_INVERT_TABLE)
+            rows = [inverted_raw[y * stride : (y + 1) * stride] for y in range(ih)]
             if rem != 0:
-                for y in range(ih):
-                    row = inverted_raw[y * stride : (y + 1) * stride]
-                    self.image_rows.append(row[:-1] + bytes([row[-1] & last_mask]))
-            else:
-                for y in range(ih):
-                    self.image_rows.append(inverted_raw[y * stride : (y + 1) * stride])
+                rows = [row[:-1] + bytes([row[-1] & last_mask]) for row in rows]
+            self.image_rows.extend(rows)
         else:
-            for y in range(ih):
-                self.image_rows.append(raw[y * stride : (y + 1) * stride])
+            self.image_rows.extend(raw[y * stride : (y + 1) * stride] for y in range(ih))
 
         # Pad remaining rows if h < height
         pad_last = last_mask if invert else 0x00
@@ -281,9 +278,12 @@ class Message:
         ifont = load_font(resolved_font)
         w, h = get_text_size(ifont, text)
 
-        tximage = Image.new("L", (max(1, w), max(1, h)), "black")
+        # Render straight into a 1-bit canvas: the bundled PIL bitmap fonts are
+        # binary raster glyphs, so an 8-bit "L" intermediate buys nothing and the
+        # later convert("1") thresholds to the same pixels.
+        tximage = Image.new("1", (max(1, w), max(1, h)), 0)
         draw = ImageDraw.Draw(tximage)
-        draw.text((0, 0), text, font=ifont, fill="white")
+        draw.text((0, 0), text, font=ifont, fill=1)
 
         crop = self.crop_empty(tximage, left=True, right=True, top=True, bottom=True)
 
@@ -309,9 +309,9 @@ class Message:
                 w, h = get_text_size(ifont, cur)
                 if w > self.config.width:
                     lw, lh = get_text_size(ifont, lastcur)
-                    sub_im = Image.new("L", (max(1, lw), max(1, lh)), "black")
+                    sub_im = Image.new("1", (max(1, lw), max(1, lh)), 0)
                     sub_draw = ImageDraw.Draw(sub_im)
-                    sub_draw.text((0, 0), lastcur, font=ifont, fill="white")
+                    sub_draw.text((0, 0), lastcur, font=ifont, fill=1)
 
                     sub_crop = self.crop_empty(
                         sub_im, left=True, right=True, top=True, bottom=True
@@ -323,9 +323,9 @@ class Message:
 
             if cur != "":
                 cw, ch = get_text_size(ifont, cur)
-                sub_im = Image.new("L", (max(1, cw), max(1, ch)), "black")
+                sub_im = Image.new("1", (max(1, cw), max(1, ch)), 0)
                 sub_draw = ImageDraw.Draw(sub_im)
-                sub_draw.text((0, 0), cur, font=ifont, fill="white")
+                sub_draw.text((0, 0), cur, font=ifont, fill=1)
 
                 sub_crop = self.crop_empty(
                     sub_im, left=True, right=True, top=True, bottom=True
@@ -334,7 +334,7 @@ class Message:
                 outs.append(sub_crop)
                 outw += sub_crop.size[0]
 
-            combined = Image.new("L", (outw, self.config.height), "black")
+            combined = Image.new("1", (outw, self.config.height), 0)
             x = 0
             for o in outs:
                 combined.paste(o, (x, 0))
